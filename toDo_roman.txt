@@ -1,0 +1,4 @@
+TO DO:
+    Complete jupyter notebook from discussion board
+    Ask TA's from AI and music class for information about processing audio files
+    Look into general data normalization
