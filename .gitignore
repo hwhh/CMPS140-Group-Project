@@ -108,3 +108,4 @@ venv.bak/
 input/
 sample_submission.csv
 train.csv
+logs/
