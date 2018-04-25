@@ -21,12 +21,17 @@ train = pd.read_csv("../input/train.csv")
 config = Config(sampling_rate=44100, audio_duration=2, n_folds=10,
                 learning_rate=0.001, use_mfcc=True, n_mfcc=40)
 
-
 LABELS = list(train.label.unique())
 label_idx = {label: i for i, label in enumerate(LABELS)}
 
 
 
+train.set_index("fname", inplace=True)
+test.set_index("fname", inplace=True)
+train["label_idx"] = train.label.apply(lambda x: label_idx[x])
+
+
+# The layers of the nureal network
 def get_2d_conv_model(config):
     nclass = config.n_classes
 
@@ -67,8 +72,7 @@ def get_2d_conv_model(config):
 def prepare_data(df, config, data_dir):
     X = np.empty(shape=(df.shape[0], config.dim[0], config.dim[1], 1))
     input_length = config.audio_length
-    for i, fname in enumerate(df['fname']):
-        # print(fname)
+    for i, fname in enumerate(df.index):
         file_path = data_dir + fname
         data, _ = librosa.core.load(file_path, sr=config.sampling_rate, res_type="kaiser_fast")
 
@@ -99,10 +103,9 @@ def normalize_data(set):
 
 def run():
     get_2d_conv_model(config)
-    X_train = [] #prepare_data(train, config, '../input/audio_train/')
-    X_test = []#prepare_data(test, config, '../input/audio_test/')
+    X_train = prepare_data(train, config, '../input/audio_train/')
+    X_test = prepare_data(test, config, '../input/audio_test/')
     y_train = to_categorical(train.label_idx, num_classes=config.n_classes)
-
 
     X_train = normalize_data(X_train)
     X_test = normalize_data(X_test)
@@ -144,22 +147,21 @@ def run():
 
 
 def create_predictions():
-    pass
-    # pred_list = []
-    # for i in range(10):
-    #     pred_list.append(np.load("../input/freesound-prediction-data-2d-conv-reduced-lr/test_predictions_%d.npy" % i))
-    # for i in range(10):
-    #     pred_list.append(np.load("../input/freesound-prediction-file/test_predictions_%d.npy" % i))
-    # prediction = np.ones_like(pred_list[0])
-    # for pred in pred_list:
-    #     prediction = prediction * pred
-    # prediction = prediction ** (1. / len(pred_list))
-    # # Make a submission file
-    # top_3 = np.array(LABELS)[np.argsort(-prediction, axis=1)[:, :3]]
-    # predicted_labels = [' '.join(list(x)) for x in top_3]
-    # test = pd.read_csv('../input/freesound-audio-tagging/sample_submission.csv')
-    # test['label'] = predicted_labels
-    # test[['fname', 'label']].to_csv("1d_2d_ensembled_submission.csv", index=False)
+    pred_list = []
+    for i in range(10):
+        pred_list.append(np.load("./predictions_2d_conv/test_predictions_%d.npy" % i))
+    for i in range(10):
+        pred_list.append(np.load("./predictions_2d_conv/test_predictions_%d.npy" % i))
+    prediction = np.ones_like(pred_list[0])
+    for pred in pred_list:
+        prediction = prediction * pred
+    prediction = prediction ** (1. / len(pred_list))
+    # Make a submission file
+    top_3 = np.array(LABELS)[np.argsort(-prediction, axis=1)[:, :3]]
+    predicted_labels = [' '.join(list(x)) for x in top_3]
+    test = pd.read_csv('../input/sample_submission.csv')
+    test['label'] = predicted_labels
+    test[['fname', 'label']].to_csv("1d_2d_ensembled_submission.csv", index=False)
 
 
-run()
+create_predictions()
